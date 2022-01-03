@@ -1,106 +1,137 @@
-// Program name: Bug Eyes
-// Developer: Vasu Goel
-/* Theme: This is a basic project in which the eyes follow wherever the mouse goes, but 
-		do not escape the eye sockets, can be a really cool and yet creepy addition to your page
-*/
-// Date: 18th November, 2017
+// By Roni Kaufman
 
-const eyeSize = 80;
-const eyeBallSize = 50;
-function setup() { 
-  //fullscreen();
- //createCanvas(500, 500);
-  
-  var canvas = createCanvas(600, 200);
-  canvas.parent('abc');
+let t = 0;
+let step = 0.01;
+let n;
+let size = 100;
+let myColor;
+let radiusDist = [];
 
-
-  left = new eyes(width/2 - 70);
-  right = new eyes(width/2 + 70);
-} 
-
-function draw() { 
-  background(220);
-  rectMode(CENTER);
-  fill(245, 224, 80);
-  rect(width/2, height/2, width, height); 
+function setup() {
+  //createCanvas(windowWidth, windowHeight);
+  createCanvas(500, 500);
+  colorMode(HSB, 1);
   noStroke();
-  fill(30);
-  ellipse(width/2 - 70, height/2, 110, 110);
-  fill(245, 224, 80);
-  ellipse(width/2 - 70, height/2, 90, 90);
-  fill(30);
-  ellipse(width/2 + 70, height/2, 110, 110);
-  fill(245, 224, 80);
-  ellipse(width/2 + 70, height/2, 90, 90);
-  rectMode(CENTER);
-  fill(30);
-  rect(width/2, height/2, 40, 20);
-  if (left.click == 1 && left.sizeY > 0) {
-    left.sizeY -= 2;
-    if (left.sizeY <= 0) left.click = 2;
+  
+  if (random(1) < 0.1) {
+    myColor = color(0.55, 0.6, 1, 0.67); // light blue, shiny!
+  } else {
+    myColor = color(0.81, 0.6, 1, 0.67); //light purple
   }
-  if (left.click == 2 && left.sizeY <= eyeBallSize) {
-    left.sizeY += 2;
-  }
-  if (left.click == 2 && left.sizeY >= eyeBallSize) 
-  {
-    left.sizeY = eyeBallSize;
-    left.click = 0;
-  }
-  if (right.click == 1 && right.sizeY > 0) {
-    right.sizeY -= 2;
-    if (right.sizeY <= 0) right.click = 2;
-  }
-  if (right.click == 2 && right.sizeY <= eyeBallSize) {
-    right.sizeY += 2;
-  }
-  if (right.click == 2 && right.sizeY >= eyeBallSize) 
-  {
-    right.sizeY = eyeBallSize;
-    right.click = 0;
-  }
-  left.drawEyes();
-  right.drawEyes();
-  let a = atan2(mouseY-height/2, mouseX-width/2);
-  let length = dist(mouseX, mouseY, width/2, height/2)/15;
-  left.rotate(a, length);
-  right.rotate(a, length);
+  n = floor((2 * PI) / step);
+  
+  radiusDist.length = n;
+  radiusDist.fill(size);
 }
 
-function mouseClicked()
-{
-  left.blink();
-  right.blink();
-  //console.log("CLicked");
+function draw() {
+  background(0.98);
+  
+  fill(myColor);
+  blob(radiusDist, width/2, height/2, 0.7, t);
+  drawFace(t);
+  
+  t += 0.005;
 }
 
-let eyes = function(x)
-{
-  this.click = 0;
-  this.x = x;
-  this.y = height/2;
-  this.xb = x;
-  this.yb = height/2;
-  this.sizeX = eyeBallSize;
-  this.sizeY = eyeBallSize;
-  this.drawEyes = function() {
-    fill(255);
-  	ellipse(this.x, height/2, eyeSize, eyeSize);
-    fill(0);
-    ellipse(this.xb, this.yb, this.sizeX, this.sizeY);
+// Creates and draws a blob
+// size is the distribution of the radius (before noise) for each angle
+// (xCenter, yCenter) is the position of the center of the blob
+// k is the tightness of the blob (0 = perfect circle)
+// t is the time
+function blob(size, xCenter, yCenter, k, t) {
+  beginShape();
+  for (let i = 0; i < n; i++) {
+    let theta = i * step;
+    let r1, r2;
+    if (theta < PI / 2) {
+      r1 = cos(theta);
+      r2 = 1;
+    } else if (theta < PI) {
+      r1 = 0;
+      r2 = sin(theta);
+    } else if (theta < 3 * PI / 2) {
+      r1 = sin(theta);
+      r2 = 0;
+    } else {
+      r1 = 1;
+      r2 = cos(theta);
+    }
+    let r = size[i] + noise(k * r1, k * r2, t) * (2/3) * size[i];
+    let x = xCenter + r * cos(theta);
+    let y = yCenter + r * sin(theta);
+    curveVertex(x, y);
   }
-  this.rotate = function(angle, length)
-  {
-    //console.log(angle, " ", length);
-    if (length < 20) this.xb = this.x + cos(angle)*length;
-    else this.xb = this.x + cos(angle)*30;
-    if (length < 20) this.yb = this.y + sin(angle)*length;
-    else this.yb = this.y + sin(angle)*30;
-    if (this.xb > this.x + 30 || this.xb < this.x - 30) this.xb = this.x + cos(angle)*30;
-    if (this.yb > this.y + 30 || this.yb < this.y - 30) this.yb = this.y + sin(angle)*30;
+  endShape();
+}
+
+// Bump function, 0 outside [-1, 1], argmax = 0
+function bump(x) {
+  if (abs(x) < 1) {
+    return ( sin(PI * (x + 0.5)) + 1 ) / 2;
+    //return (exp(-1/(1-x**2)));
+  } else {
+    return 0;
   }
-  this.blink = function() {
-    this.click = 1;
+}
+
+// Adds a bump (or valley is peakSize < 0)
+// at idx in radiusDist
+// is baseSize wise and peakSize tall
+function sculpt(idx, baseSize, peakSize) {
+  // There are two i's to deal correctly with the n|0 frontier
+  // i1 is for the index in radiusDist, 
+  // it will always be inside [0, n[,
+  // i2 is for the calculation of the bump
+  let i1 = floor(idx - baseSize/2);
+  let i2 = i1;
+  
+  if (i1 < 0) {
+    i1 += n;
   }
+  
+  while (i2 < idx + baseSize/2) {
+    let x = (2 * (i2 - idx)) / baseSize;
+    let y = peakSize * bump(x);
+    if (radiusDist[i1] + y > 0) { // (y can be negative)
+      radiusDist[i1] += y;
+    }
+    i1++;
+    if (i1 >= n) {
+      i1 -= n;
+    }
+    i2++;
+  }
+}
+
+// Draws a happy face :)
+function drawFace(t) {
+  // eyes
+  fill(0);
+  circle(width/2 - 35 + 10*noise(t), height/2 - 37 + 10*noise(t+1), 8);
+  circle(width/2 + 25 + 10*noise(t+2), height/2 - 30 + 10*noise(t+3), 8);
+  // mouth
+  stroke(0);
+  noFill();
+  strokeWeight(2);
+  beginShape();
+  vertex(width/2 - 46 + 10*noise(t+4), height/2 - 22 + 10*noise(t+5));
+  quadraticVertex(width/2 - 5 + 10*noise(t+6), 
+                  height/2 - 10 + 10*noise(t+7),
+                  width/2 + 37 + 10*noise(t+8), 
+                  height/2 - 15 + 10*noise(t+9));
+  endShape();
+  noStroke();
+}
+
+function mouseClicked() {
+  // vector from the center of the sketch to the mouse position
+  let v = createVector(mouseX - width/2, mouseY - height/2);
+  let theta = map(v.heading(), -PI, PI, PI, 3 * PI);
+  let idx = floor(theta / step);
+  let peak = 10;
+  if (keyIsPressed) {
+    peak *= -1;
+  }
+  sculpt(idx, 75, peak);
 }
